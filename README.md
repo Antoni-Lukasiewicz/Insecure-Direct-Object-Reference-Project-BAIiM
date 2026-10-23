@@ -1,102 +1,99 @@
-# Lab: IDOR / BOLA (Insecure Direct Object Reference)
+# Lab: IDOR w praktyce (OWASP Juice Shop)
 
-## Środowisko i konfiguracja
-- **Cel:** Praktyczne wykorzystanie braku weryfikacji uprawnień do obiektów w API.
-- **Aplikacja:** OWASP Juice Shop (lokalny kontener Docker).
-- **Narzędzia:** Przeglądarka internetowa, Burp Suite.
+## Środowisko i narzędzia
+- **Aplikacja:** OWASP Juice Shop. Aplikacja jest uruchamiana lokalnie za pomocą środowiska Docker.
+- **Narzędzia:** Przeglądarka internetowa oraz narzędzie Burp Suite Community Edition.
 
-1. Uruchom aplikację w terminalu:
+## Konfiguracja środowiska (Docker)
+1. Uruchom wiersz poleceń (terminal) i zainicjuj kontener poniższym poleceniem:
    `docker run --rm -p 3000:3000 bkimminich/juice-shop`
-2. Wejdź na http://localhost:3000 i zamknij komunikaty powitalne.
-3. Przejdź do Account -> Login. Utwórz dowolne konto (np. test@test.pl / admin123) i zaloguj się. Wymagane do wygenerowania koszyka przypisanego do sesji.
-4. Uruchom Burp Suite i włącz proxy w przeglądarce.
-   
+2. Otwórz przeglądarkę internetową, przejdź pod adres http://localhost:3000 i zamknij okna powitalne.
+3. Uruchom aplikację Burp Suite i skonfiguruj proxy w przeglądarce w celu przechwytywania ruchu sieciowego.
+
 **Uwaga!**
 
-W niektórych przeglądarkach zapytania wysyłane do localhost nie są przechwytuwane przez Burp Suite. Najlepiej użyć wbudowanej w Burpa przeglądarki, która przekieruje cały ruch przez proxy. Aby to zrobić: 
+W niektórych przeglądarkach zapytania wysyłane do hosta `localhost` mogą nie być przechwytywane przez Burp Suite. Zaleca się użycie przeglądarki wbudowanej w oprogramowanie Burp Suite, która domyślnie przekierowuje cały ruch przez zintegrowane proxy. W tym celu należy:
 
-1. W Burp Suite przejdź do zakładki Proxy > Intercept.
-2. Upewnij się, że opcja Intercept is on jest włączona.
-3. Kliknij przycisk Open Browser.
-4. Wpisz w pasku adresu docelowy URL http://localhost:3000.
+1. W programie Burp Suite przejść do zakładki **Proxy > Intercept**.
+2. Upewnić się, że opcja **Intercept is on** jest aktywna.
+3. Kliknąć przycisk **Open Browser**.
+4. Wpisać w pasku adresu przeglądarki docelowy URL: `http://localhost:3000`.
 
-## Zadanie 1: Nieautoryzowany odczyt (IDOR w żądaniu GET)
+## Przygotowanie scenariusza testowego
+1. W panelu aplikacji (Account -> Login) utwórz dwa niezależne konta użytkowników:
+   - Ofiara: `victim@agh`
+   - Atakujący: `attacker@agh`
+2. Zaloguj się na konto `victim@agh` i dodaj do koszyka produkt "Berry Juice". Następnie wyloguj się z systemu.
+3. Zaloguj się na konto `attacker@agh` i dodaj do koszyka produkt "Basil Juice". 
+4. Wszelkie kolejne kroki w ramach poniższych zadań należy wykonywać, pozostając zalogowanym na koncie atakującego (`attacker@agh`).
 
-1. Kliknij "Your Basket" w prawym górnym rogu strony.
-2. W Burp Suite przejdź do Proxy -> HTTP history. Znajdź żądanie `GET /rest/basket/3` (cyfra to ID twojego koszyka).
-3. Przekaż żądanie do Repeatera (Ctrl+R).
-4. Zmień ID koszyka w ścieżce na 1 (koszyk administratora): `GET /rest/basket/1`.
-5. Wyślij żądanie (Send).
+---
 
-**Wynik:** Serwer zwraca kod 200 OK i całą zawartość koszyka administratora. Brak autoryzacji na poziomie konkretnego obiektu pozwala na odczyt cudzych danych przy użyciu ważnej, ale obcej sesji.
+## Zadanie 1: Nieautoryzowany odczyt koszyka użytkownika (GET)
+**Cel:** Uzyskanie wglądu w zawartość koszyka przypisanego do konta `victim@agh` z perspektywy konta `attacker@agh`.
+
+1. Przejdź do widoku własnego koszyka (Your Basket).
+2. Zlokalizuj w programie Burp Suite żądanie pobierające zawartość koszyka i zmodyfikuj je w taki sposób, aby serwer zwrócił dane przypisane do konta ofiary.
 
 <details>
-<summary><b>Podpowiedź: Gdzie szukać parametrów?</b></summary>
-Testuj parametry numeryczne w adresach URL, nagłówkach HTTP (np. X-User-Id) oraz bezpośrednio w ciałach zapytań (JSON).
+<summary><b>Rozwiązanie (Kliknij, aby rozwinąć)</b></summary>
+
+1. W zakładce HTTP history w Burp Suite odszukaj żądanie `GET /rest/basket/X` (gdzie X oznacza identyfikator przypisany do Twojego koszyka).
+2. Przekaż wybrane żądanie do modułu Repeater (skrót Ctrl+R).
+3. Zmodyfikuj identyfikator koszyka w adresie URL, zastępując go identyfikatorem przypisanym do konta ofiary.
+4. Wyślij żądanie, klikając przycisk Send. W odpowiedzi serwer powinien zwrócić obiekt JSON zawierający listę produktów ofiary (w tym produkt Berry Juice).
 </details>
 
-## Zadanie 2: Nieautoryzowana modyfikacja (BOLA w żądaniu POST)
+---
 
-1. Na stronie głównej kliknij "Add to basket" przy dowolnym produkcie.
-2. W Burp Suite odszukaj żądanie `POST /api/BasketItems/`.
-3. Przekaż żądanie do Repeatera. Na dole zapytania znajduje się struktura JSON, np.: `{"ProductId": 7, "BasketId": 3, "quantity": 1}`.
-4. Zmień parametr `BasketId` z twojego ID na 1.
-5. Wyślij żądanie (Send).
+## Zadanie 2: Nieautoryzowana modyfikacja koszyka użytkownika (POST)
+**Cel:** Dodanie nowego produktu bezpośrednio do koszyka użytkownika `victim@agh` z poziomu sesji konta `attacker@agh`.
 
-**Wynik:** Baza danych zapisuje zmianę i produkt zostaje dodany do koszyka ofiary. Podatność umożliwia bezpośrednią modyfikację zasobów przypisanych do innych kont z pominięciem interfejsu graficznego.
+1. Zainicjuj operację dodania dowolnego produktu do własnego koszyka na stronie sklepu.
+2. Przechwyć wygenerowane żądanie i poddaj je modyfikacji w celu skierowania produktu na przypisane ID ofiary.
 
 <details>
-<summary><b>Podpowiedź: IDOR vs BOLA</b></summary>
-IDOR to starsza, ogólna nazwa. BOLA (Broken Object Level Authorization) pochodzi z klasyfikacji OWASP API Top 10 i opisuje dokładnie ten sam błąd, kładąc nacisk na brak weryfikacji na poziomie obiektu w architekturze API.
+<summary><b>Rozwiązanie (Kliknij, aby rozwinąć)</b></summary>
+
+1. Odszukaj w historii ruchu żądanie typu `POST` wysłane pod adres `/api/BasketItems/`.
+2. Przekaż to żądanie do modułu Repeater.
+3. Zlokalizuj strukturę JSON znajdującą się w ciele żądania (np. `{"ProductId": 3, "BasketId": 2, "quantity": 1}`).
+4. Dodaj wartość parametru `BasketId`, wprowadzając identyfikator koszyka ofiary pozyskany w ramach Zadania 1 `{"ProductId": 3, "BasketId": 2, "BasketId": 1, "quantity": 1}`.
+5. Wyślij żądanie (Send). Zmiany zostaną zapisane w bazie, a produkt zostanie dopisany do rachunku ofiary.
 </details>
 
-## Zadanie 3: Mitygacja w kodzie backendu
+---
 
-Serwer nie może polegać wyłącznie na identyfikatorach dostarczonych z zewnątrz.
+## Zadanie 3: Manipulacja parametrami autorskimi (PUT / POST)
+**Cel:** Dodanie recenzji produktu, która zostanie zapisana w systemie i opublikowana jako recenzja innego użytkownika.
 
-**Błędna logika (podatna na atak):**
-Klient żąda `GET /basket/1`.
-Serwer wykonuje: `SELECT * FROM baskets WHERE id = 1`
-
-**Poprawna logika (weryfikacja właściciela):**
-1. Serwer odbiera żądanie odczytu obiektu nr 1.
-2. Serwer pobiera identyfikator użytkownika z bezpiecznego tokena sesji (np. JWT).
-3. Serwer weryfikuje powiązanie w bazie danych: `if (ID_uzytkownika != ID_wlasciciela_koszyka) { rzuć błąd 403 Forbidden }`.
-
-Nowoczesne aplikacje powinny używać endpointów typu indirect, np. `GET /my-basket`, gdzie backend całkowicie ignoruje dane z frontendu i samodzielnie mapuje token sesji na właściwy obiekt w bazie.
+1. Przejdź do sekcji wprowadzania opinii (Customer Feedback).
+2. Zainicjuj proces wysyłania formularza, przechwyć odpowiednie żądanie i wymuś na serwerze przypisanie modyfikowanego autorstwa.
 
 <details>
-<summary><b>Podpowiedź: Ograniczenia skanerów</b></summary>
-Skanery DAST (automatyczne) nie znają logiki biznesowej aplikacji. Nie potrafią ocenić, czy dostęp użytkownika A do zasobów użytkownika B jest błędem, czy prawidłową funkcją systemu. Z tego powodu testy weryfikujące IDOR trzeba wykonywać ręcznie.
+<summary><b>Rozwiązanie (Kliknij, aby rozwinąć)</b></summary>
+
+1. Przechwyć żądanie odpowiedzialne za przesłanie recenzji do serwera.
+2. W module Repeater przeanalizuj parametry przesyłane w formacie JSON w ciele żądania.
+3. Odszukaj pole określające autora wiadomości (np. parametr `author`).
+4. Zastąp własny adres e-mail (`attacker@agh`) adresem ofiary (`victim@agh`) lub dowolnym, nieistniejącym ciągiem znaków.
+5. Wyślij żądanie. Aplikacja zaakceptuje zmanipulowaną wartość bez jej weryfikacji i opublikuje opinię pod zmienionym aliasem.
 </details>
 
-## Zadanie 4: Nieautoryzowane usuwanie danych (BOLA w żądaniu DELETE)
+---
 
-1. Wejdź w swój profil i dodaj nowy adres dostawy (Saved Addresses).
-2. Kliknij ikonę kosza, aby usunąć ten adres i złap to w Burpie (Proxy -> HTTP history).
-3. Znajdź żądanie `DELETE /api/Addresss/3` (gdzie 3 to ID twojego adresu).
-4. Przekaż żądanie do Repeatera (Ctrl+R).
-5. Zmień ID w adresie URL na mniejsze, np. na 1 (adres przypisany do konta administratora): `DELETE /api/Addresss/1`.
-6. Wyślij żądanie (Send).
+## Zadanie 4: Ominięcie weryfikacji hasła (Bypass)
+**Cel:** Wykonanie operacji zmiany hasła do konta z pominięciem mechanizmu weryfikacji aktualnego hasła.
 
-**Wynik:** Serwer zwraca kod 200 OK lub 204 No Content. Adres innego użytkownika został trwale skasowany z bazy. Pokazuje to, że brak weryfikacji uprawnień dotyczy również operacji niszczących (kasowania zasobów).
+1. Przejdź do formularza zmiany hasła w ustawieniach konta.
+2. Wypełnij wymagane pola, wyślij żądanie, a następnie poddaj je modyfikacji w celu ominięcia walidacji po stronie backendu.
 
 <details>
-<summary><b>Podpowiedź: Metody HTTP</b></summary>
-Podatności BOLA bardzo często kryją się w metodach takich jak DELETE, PUT czy PATCH. Programiści nierzadko pamiętają o weryfikacji właściciela przy odczycie (GET), ale zapominają o niej przy aktualizacji lub usuwaniu rekordów.
-</details>
+<summary><b>Rozwiązanie (Kliknij, aby rozwinąć)</b></summary>
 
-## Zadanie 5: IDOR na wygenerowanych plikach (wyciek dokumentów)
-
-1. Przejdź przez proces zakupu (Checkout) i sfinalizuj dowolne zamówienie. Wejdź w historię zamówień (Order History).
-2. Kliknij ikonę drukowania/pobierania potwierdzenia zamówienia w formie pliku (Track Order / Receipt).
-3. W Burpie odszukaj żądanie pobierania pliku. Będzie ono wyglądać podobnie do: `GET /ftp/receipts/order-1045.pdf` (albo poprzez ścieżkę z samym ID zamówienia).
-4. W Repeaterze podmień numer zamówienia w URL na starszy, np. zmień `1045` na `1001`.
-5. Wyślij żądanie (Send).
-
-**Wynik:** Pobierasz dokument PDF należący do innego klienta. Wiele systemów poprawnie weryfikuje dostęp do danych w samej bazie (np. API chronione przez tokeny), ale zostawia serwowanie gotowych plików statycznych (np. faktur generowanych na dysk serwera) całkowicie bez autoryzacji.
-
-<details>
-<summary><b>Podpowiedź: Enumeracja ID</b></summary>
-W realnym teście penetracyjnym takie żądanie wysyła się z Repeatera do modułu Intruder. Ustawia się listę numerów od 1 do 1000, a Burp automatycznie pobiera wszystkie cudze faktury, jedną po drugiej, bez ręcznego wpisywania ID.
+1. Przechwyć żądanie inicjujące proces zmiany hasła.
+2. Przekaż żądanie do modułu Repeater.
+3. Wśród przesyłanych parametrów zlokalizuj pole przechowujące podane przez użytkownika aktualne hasło (parametr `currentPassword`).
+4. Usuń całkowicie wspomniany parametr z ciała zapytania JSON.
+5. Wyślij żądanie. Ze względu na błąd implementacji w API Juice Shop, brak zmiennej zawierającej obecne hasło skutkuje pominięciem procedury weryfikacyjnej i natychmiastowym zaktualizowaniem hasła na nowe.
 </details>
