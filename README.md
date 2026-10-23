@@ -42,6 +42,7 @@ W niektórych przeglądarkach zapytania wysyłane do hosta `localhost` mogą nie
 2. Przekaż wybrane żądanie do modułu Repeater (skrót Ctrl+R).
 3. Zmodyfikuj identyfikator koszyka w adresie URL, zastępując go identyfikatorem przypisanym do konta ofiary.
 4. Wyślij żądanie, klikając przycisk Send. W odpowiedzi serwer powinien zwrócić obiekt JSON zawierający listę produktów ofiary (w tym produkt Berry Juice).
+![Solution img](pictures/1.png)
 </details>
 
 ---
@@ -60,6 +61,9 @@ W niektórych przeglądarkach zapytania wysyłane do hosta `localhost` mogą nie
 3. Zlokalizuj strukturę JSON znajdującą się w ciele żądania (np. `{"ProductId": 3, "BasketId": 2, "quantity": 1}`).
 4. Dodaj wartość parametru `BasketId`, wprowadzając identyfikator koszyka ofiary pozyskany w ramach Zadania 1 `{"ProductId": 3, "BasketId": 2, "BasketId": 1, "quantity": 1}`.
 5. Wyślij żądanie (Send). Zmiany zostaną zapisane w bazie, a produkt zostanie dopisany do rachunku ofiary.
+![Solution img](pictures/2.png)
+![Solution img](pictures/3.png)
+![Solution img](pictures/4.png)
 </details>
 
 ---
@@ -78,6 +82,7 @@ W niektórych przeglądarkach zapytania wysyłane do hosta `localhost` mogą nie
 3. Odszukaj pole określające autora wiadomości (np. parametr `author`).
 4. Zastąp własny adres e-mail (`attacker@agh`) adresem ofiary (`victim@agh`) lub dowolnym, nieistniejącym ciągiem znaków.
 5. Wyślij żądanie. Aplikacja zaakceptuje zmanipulowaną wartość bez jej weryfikacji i opublikuje opinię pod zmienionym aliasem.
+![Solution img](pictures/6.png)
 </details>
 
 ---
@@ -96,4 +101,5 @@ W niektórych przeglądarkach zapytania wysyłane do hosta `localhost` mogą nie
 3. Wśród przesyłanych parametrów zlokalizuj pole przechowujące podane przez użytkownika aktualne hasło (parametr `currentPassword`).
 4. Usuń całkowicie wspomniany parametr z ciała zapytania JSON.
 5. Wyślij żądanie. Ze względu na błąd implementacji w API Juice Shop, brak zmiennej zawierającej obecne hasło skutkuje pominięciem procedury weryfikacyjnej i natychmiastowym zaktualizowaniem hasła na nowe.
+![Solution img](pictures/7.png)
 </details>
