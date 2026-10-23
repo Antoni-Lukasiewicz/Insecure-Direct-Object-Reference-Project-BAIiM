@@ -10,6 +10,15 @@
 2. Wejdź na http://localhost:3000 i zamknij komunikaty powitalne.
 3. Przejdź do Account -> Login. Utwórz dowolne konto (np. test@test.pl / admin123) i zaloguj się. Wymagane do wygenerowania koszyka przypisanego do sesji.
 4. Uruchom Burp Suite i włącz proxy w przeglądarce.
+   
+**Uwaga!**
+
+W niektórych przeglądarkach zapytania wysyłane do localhost nie są przechwytuwane przez Burp Suite. Najlepiej użyć wbudowanej w Burpa przeglądarki, która przekieruje cały ruch przez proxy. Aby to zrobić: 
+
+1. W Burp Suite przejdź do zakładki Proxy > Intercept.
+2. Upewnij się, że opcja Intercept is on jest włączona.
+3. Kliknij przycisk Open Browser.
+4. Wpisz w pasku adresu docelowy URL http://localhost:3000.
 
 ## Zadanie 1: Nieautoryzowany odczyt (IDOR w żądaniu GET)
 
