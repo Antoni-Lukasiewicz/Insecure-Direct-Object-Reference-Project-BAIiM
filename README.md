@@ -84,7 +84,8 @@ W niektórych przeglądarkach zapytania wysyłane do hosta `localhost` mogą nie
 3. Odszukaj pole określające autora wiadomości (np. parametr `author`).
 4. Zastąp własny adres e-mail (`attacker@agh`) adresem ofiary (`victim@agh`) lub dowolnym, nieistniejącym ciągiem znaków.
 5. Wyślij żądanie. Aplikacja zaakceptuje zmanipulowaną wartość bez jej weryfikacji i opublikuje opinię pod zmienionym aliasem.
-   
+
+![Solution_img](pictures/8.png)   
 ![Solution img](pictures/6.png)
 </details>
 
